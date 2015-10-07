@@ -1,0 +1,33 @@
+{
+  "name": "tinycloud",
+  "version": "1.0.0",
+  "description": "minimal module for launching and managing a compute cluster",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/freeman-lab/tinycloud.git"
+  },
+  "keywords": [
+    "cloud",
+    "compute",
+    "cluster",
+    "aws",
+    "ec2"
+  ],
+  "author": "Jeremy Freeman <the.freeman.lab@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/freeman-lab/tinycloud/issues"
+  },
+  "homepage": "https://github.com/freeman-lab/tinycloud#readme",
+  "dependencies": {
+    "async": "^1.4.2",
+    "aws-sdk": "^2.2.6",
+    "lodash": "^3.10.1",
+    "ssh-exec": "^1.3.0",
+    "ssh2": "^0.4.11"
+  }
+}
