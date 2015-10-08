@@ -42,145 +42,139 @@ var Cluster = function(opts) {
 
 Cluster.prototype.launch = function(cb) {
 
+  async.series([
+    this.check.bind(this),
+    this.configure.bind(this),
+    this.authorize.bind(this),
+    this.create.bind(this)
+  ], function (err, data) {
+      if (err) return cb(err)
+      cb(null, data)
+  })
+
+}
+
+// reserve a set of instances
+// tag those instances with their security groups
+
+// do an async series that reserves and then tags
+// do an async parallel over those tasks
+
+
+
+Cluster.prototype.create = function(cb) {
+
 	var self = this
 
-  function check(flow) {
+  var tasks = _.map(self.specs, function(spec) {
 
-    console.log('checking whether instances exist...')
+    return function (next) {
 
-    self.list(function (err, data) {
-      if (err) return cb(err)
-      if (data.length > 0) return cb('instances already exist')
-      flow(null)
-    })
+      async.waterfall([
 
-  }
+        function (flow) {
+          self.client.runInstances(spec, function (err, reserved) {
+            if (err) return flow(err)
+            console.log('created instances ' + _.map(reserved.Instances, function(i) {return i.InstanceId}))
+            flow(null, reserved)
+          })
+        },
 
-  function secure(flow) {
-
-    console.log('setting up security groups...')
-
-    async.each(self.groups, 
-
-      function (group, next) {
-        var params = {
-          Description: group, 
-          GroupName: group
-        }
-        self.client.createSecurityGroup(params, function (err, data) {
-          if (!err) return next()
-          if (err.code === "InvalidGroup.Duplicate") {
-            console.log('security group ' + group + ' already exists, proceeding...')
-            next()
-          } else {
-            next(err)
+        function (reserved, flow) {
+          var params = {
+            Resources: _.map(reserved.Instances, function(i) {return i.InstanceId}), 
+            Tags: [{Key: 'Name', Value: reserved.Instances[0].SecurityGroups[0].GroupName}]
           }
-        })
-      }, 
-
-      function (err) {
-        if (err) return cb(err)
-        flow(null)
-      }
-    )
-  }
-
-  function authorize(flow) {
-
-    console.log('setting authorization for security groups...')
-
-    async.each(self.groups, 
-
-      function (group, next) {
-        var params = {
-          GroupName: group,
-          IpPermissions: _.map(self.ports, function(port) {
-            return {
-              IpProtocol: 'tcp',
-              FromPort: port,
-              ToPort: port,
-              IpRanges: [{CidrIp: '0.0.0.0/0'}]
-            }
+          self.client.createTags(params, function (err, data) {
+            if (err) return flow(err)
+            flow(null, reserved)
           })
         }
-        self.client.authorizeSecurityGroupIngress(params, function (err, data) {
-          if (!err) return next()
-          if (err.code == 'InvalidPermission.Duplicate') {
-            console.log('authorization already set, proceeding...')
-            next()
-          } else {
-            next(err)
+
+      ], function (err, reserved) {
+        if (err) return next(err)
+        next(null, reserved)
+      })
+
+    }
+
+  })
+
+  async.parallel(tasks, function(err, data) {
+    if (err) return cb(err)
+    cb(null, data)  
+  })
+
+}
+
+Cluster.prototype.configure = function(cb) {
+
+  var self = this
+
+  console.log('configuring security groups...')
+
+  async.each(self.groups, 
+
+    function (group, next) {
+      var params = {
+        Description: group, 
+        GroupName: group
+      }
+      self.client.createSecurityGroup(params, function (err, data) {
+        if (!err) return next()
+        if (err.code === "InvalidGroup.Duplicate") {
+          console.log('security group ' + group + ' already exists, proceeding...')
+          next()
+        } else {
+          next(err)
+        }
+      })
+    }, 
+
+    function (err) {
+      if (err) return cb(err)
+      cb(null, 'security groups created')
+    }
+  )
+
+}
+
+Cluster.prototype.authorize = function(cb) {
+
+  var self = this
+
+  console.log('setting authorization for security groups...')
+
+  async.each(self.groups, 
+
+    function (group, next) {
+      var params = {
+        GroupName: group,
+        IpPermissions: _.map(self.ports, function(port) {
+          return {
+            IpProtocol: 'tcp',
+            FromPort: port,
+            ToPort: port,
+            IpRanges: [{CidrIp: '0.0.0.0/0'}]
           }
         })
-      },
-
-      function (err) {
-        if (err) return cb(err)
-        flow(null)
       }
-    )
-  }
-
-  function create(flow) {
-
-    console.log('creating instances...')
-
-    var tasks = _.map(self.specs, function(spec) {
-      return function(next) {
-        self.client.runInstances(spec, function (err, data) {
-          if (err) return next(err)
-          console.log('created instances ' + _.map(data.Instances, function(i) {return i.InstanceId}))
-          next(null, data)
-        })
-      }
-    })
-
-    async.parallel(tasks, function (err, reservations) {
-      if (err) return cb(err)
-      flow(null, reservations)
-    })
-
-  }
-
-  function tag(reservations, flow) {
-    
-    console.log('tagging instances...')
-
-    var instances = _.flatten(_.map(reservations, function (reservation) {
-      return reservation.Instances
-    }))
-
-    async.each(instances, 
-
-      function (instance, next) {
-        var params = {
-          Resources: [instance.InstanceId], 
-          Tags: [{Key: 'Name', Value: instance.SecurityGroups[0].GroupName}]
-        }
-        self.client.createTags(params, function (err, data) {
-          if (err) return next(err)
+      self.client.authorizeSecurityGroupIngress(params, function (err, data) {
+        if (!err) return next()
+        if (err.code == 'InvalidPermission.Duplicate') {
+          console.log('authorization already set, proceeding...')
           next()
-        })
-      }, 
+        } else {
+          next(err)
+        }
+      })
+    },
 
-      function (err) {
-        if (err) return cb(err)
-        flow(null)
-      }
-
-    )
-
-  }
-
-  async.waterfall([
-    check,
-    secure,
-    authorize,
-    create,
-    tag
-  ], function (err) {
+    function (err) {
       if (err) return cb(err)
-  })
+      cb(null, 'authorization set')
+    }
+  )
 
 }
 
@@ -203,20 +197,31 @@ Cluster.prototype.destroy = function(cb) {
 
 Cluster.prototype.list = function(cb) {
 
-  var self = this
-
   var filt = {Filters: [
-    {Name: 'group-name', Values: self.groups}, 
+    {Name: 'group-name', Values: this.groups}, 
     {Name: 'instance-state-name', Values: ['running', 'pending']}]
   }
 
-  self.client.describeInstances(filt, function(err, data) {
+  this.client.describeInstances(filt, function(err, data) {
     if (err) return cb(err)
     var instances = _.flatten(_.map(data.Reservations, function (reservation) {
       return reservation.Instances
     }))
     cb(null, instances)
   });
+
+}
+
+Cluster.prototype.check = function(cb) {
+
+  console.log('checking whether instances exist...')
+
+  this.list(function (err, data) {
+    var n = data.length
+    if (err) return cb(err)
+    if (n > 0) return cb('instances already exist')
+    cb(null, n)
+  })
 
 }
 

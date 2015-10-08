@@ -13,7 +13,7 @@ options = {
 
 var cloud = new tinycloud(options)
 
-cloud.launch( function(err, data) {
+cloud.login( function(err, data) {
 	if (err) {
 		console.log(err)
 	} else {
