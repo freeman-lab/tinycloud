@@ -4,44 +4,47 @@ var child = require('child_process');
 var fs = require('fs')
 var _ = require('lodash')
 var client = require('./lib/client.js')
+var util = require('util')
+var events = require('events')
+var noop = function () {}
 
-var Cluster = function(opts) {
-	var opts = opts || {}
+util.inherits(Cluster, events.EventEmitter)
 
-	this.workers = opts.workers
-	this.name = opts.name
-  this.key = opts.key
-	this.groups = [this.name + '-master', this.name + '-worker']
-  this.ports = opts.ports
-	this.image = opts.image
-  this.instance = opts.instance
-  this.dry = opts.dry
-  self = this
+function Cluster(options, groups) {
+	var options = options || {}
+  var self = this
+  events.EventEmitter.call(self)
 
-  var master = {
-    DryRun: self.dry,
-    ImageId: self.image,
-    InstanceType: self.instance,
-    KeyName: self.key,
-    MinCount: 1
-  }
-  var worker = _.clone(master)
+	this.count = options.count
+	this.cluster = options.cluster
+  this.ports = options.ports
+  this.tags = _.map(groups, function(g) {return g.tag})
+  this.groupnames = _.map(groups, function(g) {return options.cluster + '-' + g.tag})
 
-  master.MaxCount = 1
-  master.SecurityGroupIds = [opts.name + '-master']
+  var specs = _.map(groups, function (group) {
+    return {
+      DryRun: options.dry,
+      ImageId: options.image,
+      InstanceType: options.type,
+      KeyName: options.key,
+      MinCount: group.count,
+      MaxCount: group.count,
+      SecurityGroupIds: [options.cluster + '-' + group.tag]
+    }
+  })
 
-  worker.MaxCount = opts.workers
-  worker.SecurityGroupIds = [opts.name + '-worker']
-
-  this.specs = [master, worker]
+  this.specs = specs
 	this.client = client()
 
 	return this
-
 }
 
-Cluster.prototype.launch = function(cb) {
+// launch a cluster
 
+Cluster.prototype.launch = function(cb) {
+  if (!cb) cb = noop
+
+  var self = this
   async.series([
     this.check.bind(this),
     this.configure.bind(this),
@@ -49,22 +52,18 @@ Cluster.prototype.launch = function(cb) {
     this.create.bind(this)
   ], function (err, data) {
       if (err) return cb(err)
-      cb(null, data)
+      self.emit('ready')
+      cb(null, data[data.length-1])
   })
 
 }
 
-// reserve a set of instances
-// tag those instances with their security groups
-
-// do an async series that reserves and then tags
-// do an async parallel over those tasks
-
-
+// create cluster instances
 
 Cluster.prototype.create = function(cb) {
 
 	var self = this
+  self.emit('progress', 'Creating cluster instances')
 
   var tasks = _.map(self.specs, function(spec) {
 
@@ -75,7 +74,6 @@ Cluster.prototype.create = function(cb) {
         function (flow) {
           self.client.runInstances(spec, function (err, reserved) {
             if (err) return flow(err)
-            console.log('created instances ' + _.map(reserved.Instances, function(i) {return i.InstanceId}))
             flow(null, reserved)
           })
         },
@@ -95,25 +93,27 @@ Cluster.prototype.create = function(cb) {
         if (err) return next(err)
         next(null, reserved)
       })
-
     }
 
   })
 
   async.parallel(tasks, function(err, data) {
     if (err) return cb(err)
+    self.emit('success', 'Instances created')
     cb(null, data)  
   })
 
 }
 
+// configure security groups
+
 Cluster.prototype.configure = function(cb) {
 
+
   var self = this
+  self.emit('progress', 'Creating security groups')
 
-  console.log('configuring security groups...')
-
-  async.each(self.groups, 
+  async.each(self.groupnames, 
 
     function (group, next) {
       var params = {
@@ -121,31 +121,31 @@ Cluster.prototype.configure = function(cb) {
         GroupName: group
       }
       self.client.createSecurityGroup(params, function (err, data) {
-        if (!err) return next()
-        if (err.code === "InvalidGroup.Duplicate") {
-          console.log('security group ' + group + ' already exists, proceeding...')
-          next()
-        } else {
-          next(err)
-        }
+        if (!err || err.code === "InvalidGroup.Duplicate") return next()
+        next(err)
       })
     }, 
 
     function (err) {
-      if (err) return cb(err)
-      cb(null, 'security groups created')
+      if (err) {
+        return cb(err)
+      }
+      self.emit('success', 'Security groups created')
+      cb(null, self.groupnames)
     }
   )
 
 }
 
+// authorize security groups
+
 Cluster.prototype.authorize = function(cb) {
 
+
   var self = this
+  self.emit('progress', 'Setting authorization on security groups')
 
-  console.log('setting authorization for security groups...')
-
-  async.each(self.groups, 
+  async.each(self.groupnames, 
 
     function (group, next) {
       var params = {
@@ -160,107 +160,108 @@ Cluster.prototype.authorize = function(cb) {
         })
       }
       self.client.authorizeSecurityGroupIngress(params, function (err, data) {
-        if (!err) return next()
-        if (err.code == 'InvalidPermission.Duplicate') {
-          console.log('authorization already set, proceeding...')
-          next()
-        } else {
-          next(err)
-        }
+        if (!err || err.code === 'InvalidPermission.Duplicate') return next()
+        next(err)
       })
     },
 
     function (err) {
       if (err) return cb(err)
-      cb(null, 'authorization set')
+      self.emit('success', 'Authorization set')
+      cb(null, self.groupnames)
     }
   )
 
 }
 
-Cluster.prototype.destroy = function(cb) {
+// destroy cluster
 
-  this.list( function(err, instances) {
+Cluster.prototype.destroy = function(cb) {
+  if (!cb) cb = noop
+
+  var self = this
+  self.emit('progress', 'Shutting down cluster')
+  this.list(null, function(err, instances) {
 
     if (err) return cb(err)
-    if (instances.length === 0) return cb('no instances to destroy')
+    if (instances.length === 0) return cb(new Error('no instances to destroy'))
 
-    var ids = _.map(instances, function (instance) { return instance.InstanceId})
+    var ids = _.map(instances, function (instance) { return instance.id})
     self.client.terminateInstances({InstanceIds: ids}, function(err, data) {
       if (err) return cb(err)
-      console.log('instances terminated')
+      self.emit('success', 'Terminated ' + ids.length + ' instances')
       cb(null, instances)
     })
   })
 
 }
 
-Cluster.prototype.list = function(cb) {
+// list instances associated with tags
+
+Cluster.prototype.list = function(tag, cb) {
+  if (!cb) cb = noop
+
+  var self = this
+
+  if (tag && _.indexOf(self.tags, tag) < 0) return cb(new Error('No instances found for ' + tag))
+  var target = tag ? [self.cluster + '-' + tag] : self.groupnames
 
   var filt = {Filters: [
-    {Name: 'group-name', Values: this.groups}, 
+    {Name: 'group-name', Values: target}, 
     {Name: 'instance-state-name', Values: ['running', 'pending']}]
   }
 
   this.client.describeInstances(filt, function(err, data) {
     if (err) return cb(err)
     var instances = _.flatten(_.map(data.Reservations, function (reservation) {
-      return reservation.Instances
+      return _.map(reservation.Instances, function(instance) {
+        return {
+          id: instance.InstanceId,
+          group: instance.SecurityGroups[0].GroupName, 
+          privateip: instance.PrivateIpAddress, 
+          publicip: instance.PublicIpAddress, 
+          publicdns: instance.PublicDnsName,
+          state: instance.State.Name
+        }
+      })
     }))
     cb(null, instances)
   });
 
 }
 
-Cluster.prototype.check = function(cb) {
+// login to an instance associated with a tag
 
-  console.log('checking whether instances exist...')
+Cluster.prototype.login = function(tag, ind, cb) {
+  if (!cb) cb = noop
 
-  this.list(function (err, data) {
-    var n = data.length
-    if (err) return cb(err)
-    if (n > 0) return cb('instances already exist')
-    cb(null, n)
-  })
+  var self = this
+  var tag = tag || self.tags[0]
+  var ind = ind || 0
 
-}
-
-Cluster.prototype.status = function(cb) {
-
-  this.list( function(err, instances) {
+  this.list(tag, function(err, instances) {
 
     if (err) return cb(err)
-    var status = _.map(instances, function (instance) { 
-      return instance.State.Name
-    })
-    cb(null, status)
-
-  })
-
-}
-
-Cluster.prototype.login = function(cb) {
-
-  this.list (function(err, instances) {
-
-    if (err) return cb(err)
-    var master = _.find(instances, function (instance) {
-      return instance.SecurityGroups[0].GroupName === self.groups[0]
-    })
+    if (instances.length === 0) return cb('No instances found')
+    if (!instances[ind]) return cb('Cannot find instance')
+    var target = instances[ind]
     var opts = {
-      host: master.PublicDnsName,
+      host: target.publicdns,
       username: 'ubuntu',
       privateKey: fs.readFileSync('/Users/freemanj11/Dropbox/tokens/voltron.pem')
     }
 
-    console.log('opening connection to master...')
+    self.emit('progress', 'opening connection to ' + target.id + ' (' + tag + ')')
 
-    var Client = require('ssh2').Client;
+    var Client = require('ssh2').Client
 
     var conn = new Client();
+    conn.on('error', function(err) {
+      return cb(err)
+    })
     conn.on('ready', function() {
       conn.shell(function(err, stream) {
-        if (err) throw err;
+        if (err) return cb(err)
         process.stdin.setRawMode(true)
         process.stdin.resume()
         process.stdin.pipe(stream.stdin)
@@ -271,16 +272,33 @@ Cluster.prototype.login = function(cb) {
           process.exit()
         })
       });
-    }).connect(opts);
+    }).connect(opts, function(err) {
+      if (err) return cb(err)
+    });
 
   })
-
 
 }
 
 Cluster.prototype.execute = function(cb) {
 
 
+}
+
+Cluster.prototype.check = function(cb) {
+
+  var self = this
+  self.emit('progress', 'Checking for existing instances')
+
+  this.list(null, function (err, data) {
+    var n = data.length
+    if (err) return cb(err)
+    if (n > 0) {
+      return cb(new Error('Instances already exist'))
+    }
+    self.emit('success', 'No existing instances found')
+    cb(null)
+  })
 
 }
 

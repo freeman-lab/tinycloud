@@ -1,28 +1,42 @@
 var tinycloud = require('./index.js')
 var _ = require('lodash')
 
-options = {
-	'dry': false,
-	'workers': 1,
-	'image': 'ami-d05e75b8',
-	'instance': 'm3.medium',
-	'name': 'mycloud',
-	'ports': [22, 80],
-	'key': 'voltron'
+var options = {
+  dry: false,
+  image: 'ami-d05e75b8',
+  type: 'm3.medium',
+  cluster: 'mycloud',
+  ports: [22, 80],
+  key: 'voltron'
 }
 
-var cloud = new tinycloud(options)
+var groups = [
+  {tag: 'master', count: 1},
+  {tag: 'worker', count: 1}
+]
 
-cloud.login( function(err, data) {
-	if (err) {
-		console.log(err)
-	} else {
-		console.log(data)
-	}
-})
+var cloud = new tinycloud(options, groups)
+
+// cloud.on('progress', function(data) {
+//   console.log(data)
+// })
+
+// cloud.on('success', function(data) {
+//   console.log(data)
+// })
+
+// cloud.on('ready', function() {
+//   console.log('Cluster ready')
+// })
+
+// cloud.destroy(function(err, data) {
+//   if (err) console.log(err)
+//   if (data) console.log(data)
+// })
+
 
 // cloud.list(function(err, data) {
-// 	console.log(data)
+//  console.log(data)
 // })
 
 // command line methods:
