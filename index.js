@@ -45,6 +45,7 @@ Cluster.prototype.launch = function(cb) {
   if (!cb) cb = noop
 
   var self = this
+
   async.series([
     this.check.bind(this),
     this.configure.bind(this),
@@ -230,25 +231,40 @@ Cluster.prototype.list = function(tag, cb) {
 
 }
 
+Cluster.prototype.summarize = function(tag, cb) {
+  if (!cb) cb = noop
+
+  var self = this
+
+  this.list(tag, function(err, data) {
+    if (err) return cb(err)
+    if (data.length == 0) return cb(new Error('No instances found'))
+    self.emit('progress', 'Found ' + data.length + ' instances')
+    cb(null, data)
+  })
+
+}
+
 // login to an instance associated with a tag
 
-Cluster.prototype.login = function(tag, ind, cb) {
+Cluster.prototype.login = function(tag, ind, keyfile, cb) {
   if (!cb) cb = noop
 
   var self = this
   var tag = tag || self.tags[0]
   var ind = ind || 0
+  if (!keyfile) return cb(new Error('No keyfile provided'))
 
   this.list(tag, function(err, instances) {
 
     if (err) return cb(err)
-    if (instances.length === 0) return cb('No instances found')
-    if (!instances[ind]) return cb('Cannot find instance')
+    if (instances.length === 0) return cb(new Error('No instances found'))
+    if (!instances[ind]) return cb(new Error('Cannot find instance'))
     var target = instances[ind]
     var opts = {
       host: target.publicdns,
       username: 'ubuntu',
-      privateKey: fs.readFileSync('/Users/freemanj11/Dropbox/tokens/voltron.pem')
+      privateKey: fs.readFileSync(keyfile)
     }
 
     self.emit('progress', 'opening connection to ' + target.id + ' (' + tag + ')')
