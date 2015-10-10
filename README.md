@@ -105,14 +105,21 @@ cloud.launch( function(err, data) {
 Create a new cloud
 
 **options**
-`dry` - do a dry run
-`image` - amazon image
-`type` - machine instance type
-`cluster` - name of cluster
-`ports` - ports to open
-`key` - name of key file
+
+`dry` do a dry run
+
+`image` amazon image
+
+`type` machine instance type
+
+`cluster` name of cluster
+
+`ports` ports to open
+
+`key` name of key file
 
 **groups**
+
 a list of cluster groups, each corresponding to one or more tagged collections of instances
 ```
 [
