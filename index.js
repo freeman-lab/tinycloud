@@ -3,9 +3,9 @@ var aws = require('aws-sdk')
 var child = require('child_process');
 var fs = require('fs')
 var _ = require('lodash')
-var client = require('./lib/client.js')
 var util = require('util')
 var events = require('events')
+var client = require('./lib/client.js')
 var noop = function () {}
 
 util.inherits(Cluster, events.EventEmitter)
@@ -110,7 +110,6 @@ Cluster.prototype.create = function(cb) {
 
 Cluster.prototype.configure = function(cb) {
 
-
   var self = this
   self.emit('progress', 'Creating security groups')
 
@@ -141,7 +140,6 @@ Cluster.prototype.configure = function(cb) {
 // authorize security groups
 
 Cluster.prototype.authorize = function(cb) {
-
 
   var self = this
   self.emit('progress', 'Setting authorization on security groups')
@@ -231,10 +229,13 @@ Cluster.prototype.list = function(tag, cb) {
 
 }
 
+// summarize a cluster (error if no instances found)
+
 Cluster.prototype.summarize = function(tag, cb) {
   if (!cb) cb = noop
 
   var self = this
+  self.emit('progress', 'Retrieving cluster info')
 
   this.list(tag, function(err, data) {
     if (err) return cb(err)
@@ -253,7 +254,8 @@ Cluster.prototype.login = function(tag, ind, keyfile, cb) {
   var self = this
   var tag = tag || self.tags[0]
   var ind = ind || 0
-  if (!keyfile) return cb(new Error('No keyfile provided'))
+  if (!keyfile) return cb(new Error('No identity keyfile provided'))
+  self.emit('progress', 'Logging into cluster')
 
   this.list(tag, function(err, instances) {
 
@@ -267,7 +269,7 @@ Cluster.prototype.login = function(tag, ind, keyfile, cb) {
       privateKey: fs.readFileSync(keyfile)
     }
 
-    self.emit('progress', 'opening connection to ' + target.id + ' (' + tag + ')')
+    self.emit('progress', 'Opening connection to ' + target.id + ' (' + tag + ')')
 
     var Client = require('ssh2').Client
 
@@ -296,10 +298,7 @@ Cluster.prototype.login = function(tag, ind, keyfile, cb) {
 
 }
 
-Cluster.prototype.execute = function(cb) {
-
-
-}
+// check if instances for a cluster already exist
 
 Cluster.prototype.check = function(cb) {
 
