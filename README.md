@@ -70,3 +70,62 @@ tinycloud --help
 ```
 
 ## use as a module
+
+Example launching a cluster with 1 master and 1 worker
+
+``` js
+var tinycloud = require('tiny-cloud')
+
+var options = {
+  dry: false, // do a dry run
+  image: 'ami-d05e75b8', // amazon image
+  type: 'm3.medium', // machine instance type
+  cluster: 'voltron', // name of cluster
+  ports: [22, 80], // ports to open
+  key: 'mykey' // name of
+}
+
+var groups = [
+  {tag: 'master', count: 1},
+  {tag: 'worker', count: 1}
+]
+
+var cloud = new tinycloud(options, groups)
+
+cloud.launch( function(err, data) {
+  if (err) console.log(err)
+  if (data) console.log(data)
+})
+```
+
+## API
+
+#### `cloud = tinycloud(options, groups)`
+
+Create a new cloud
+
+**options**
+`dry` - do a dry run
+`image` - amazon image
+`type` - machine instance type
+`cluster` - name of cluster
+`ports` - ports to open
+`key` - name of key file
+
+**groups**
+a list of cluster groups, each corresponding to one or more tagged collections of instances
+```
+[
+  {tag: 'master', count: 1},
+  {tag: 'scheduler', count: 1},
+  {tag: 'worker', count: 10}
+]
+```
+
+#### `cloud.launch([cb])`
+
+#### `cloud.destroy([cb])`
+
+#### `cloud.list(tag, cb)`
+
+#### `cloud.login(tag, ind, keyfile, [cb])`
