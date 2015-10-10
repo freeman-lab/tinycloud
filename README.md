@@ -115,7 +115,7 @@ Create a new cloud
 
 **groups**
 
-a list of cluster groups, each corresponding to one or more tagged collections of instances
+each corresponds to one or more tagged collections of instances
 ```
 [
   {tag: 'master', count: 1},
