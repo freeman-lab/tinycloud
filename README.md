@@ -4,7 +4,9 @@ Minimal module for launching compute clusters with `node.js`. Lets you spin up a
 
 There are already a couple great modules for cloud deployments, like [`kirby`](https://github.com/mafintosh/kirby) and [`pkgcloud`](https://github.com/pkgcloud/pkgcloud), but they are either very specific (targeting single nodes) or very broad (supporting compute, storage, etc.). `tinycloud` is just enough to make and play with a cluster!
 
-NOTE: This module launches clusters, which can cost real money. It is also still under development. Carefully monitor your AWS usage.
+NOTE: This module launches clusters, which can cost real money. It is also still under development. Carefully monitor your AWS usage!
+
+BONUS: `tinycloud` is a [cat](http://warriors.wikia.com/wiki/Tinycloud) from the Warriors series
 
 ## install
 
@@ -49,13 +51,13 @@ tinycloud login voltron master -i mykey.pem
 tinycloud login voltron worker 4 -i mykey.pem
 ```
 
-Show down your cluster with
+Shut down your cluster with
 
 ```
 tinycloud destroy voltron
 ```
 
-If you want to test the launch procedure without actually creating instances use
+If you want to test the launch process without creating instances use a dry run
 
 ```
 tinycloud launch -d
