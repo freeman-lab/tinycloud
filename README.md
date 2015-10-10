@@ -106,17 +106,12 @@ Create a new cloud
 
 **options**
 
-`dry` do a dry run
-
-`image` amazon image
-
-`type` machine instance type
-
-`cluster` name of cluster
-
-`ports` ports to open
-
-`key` name of key file
+- `dry` do a dry run
+- `image` amazon image
+- `type` machine instance type
+- `cluster` name of cluster
+- `ports` ports to open
+- `key` name of key file
 
 **groups**
 
