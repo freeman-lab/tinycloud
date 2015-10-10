@@ -24,7 +24,13 @@ npm install tinycloud --save
 
 ## use as a cli
 
-You can use as a CLI to launch and monitor your cluster. First make sure to set the environmental variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. To create a cluster you just need to give it a name and the name of key pair, and you can specify things like the number of worker nodes
+You can use as a CLI to launch and monitor your cluster. First make sure to set the environmental variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. To create a cluster you just need to give it a name (we'll call it `voltron`) and the name of key pair (we'll call it `mykey`)
+
+```
+tinycloud launch voltron -k mykey
+```
+
+To make a bigger cluster, just add more workers
 
 ```
 tinycloud launch voltron -k mykey -n 5
@@ -36,10 +42,10 @@ Once launched, you can list all instances
 tinycloud list voltron
 ```
 
-And login to your nodes by specifying the group and optionally the number
+And login to your nodes with the help of [`ssh2`](https://github.com/mscdex/ssh2) by providing a identity key file
 
 ```
-tinycloud login voltron voltron.pem
+tinycloud login voltron -i mykey.pem
 ```
 
 By default you'll log into the master. You can also specify a group and/or instance number
@@ -62,6 +68,7 @@ If you want to test the launch process without creating instances use a dry run
 ```
 tinycloud launch -d
 ```
+
 
 See all options with
 
