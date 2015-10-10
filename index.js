@@ -198,7 +198,6 @@ Cluster.prototype.destroy = function(cb) {
 // list instances associated with tags
 
 Cluster.prototype.list = function(tag, cb) {
-  if (!cb) cb = noop
 
   var self = this
 
