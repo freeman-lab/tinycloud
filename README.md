@@ -151,7 +151,7 @@ List instances associated with a cluster.
 
 `cb` if provided will be called with `cb(error, data)`. If successful, `data` will be a list of instances.
 
-#### `cloud.login([tag], [ind], keyfile, cmd, [cb])`
+#### `cloud.login([tag], [ind], keyfile, [cb])`
 
 Login to a single instance associated with a cluster. 
 
@@ -163,7 +163,7 @@ Login to a single instance associated with a cluster.
 
 `cb` if provided will be called with `cb(error)`.
 
-#### `cloud.execute([tag], [ind], keyfile, [cb])`
+#### `cloud.execute([tag], [ind], keyfile, cmd, [cb])`
 
 Execute a command on one or more instances assocaited with a cluster.
 
@@ -171,8 +171,9 @@ Execute a command on one or more instances assocaited with a cluster.
 
 `ind` specifies the `ind`th instance belonging to the specified group. If not provided, will use all instances.
 
-`cmd` is the string to execute on the instances.
-
 `keyfile` required for authentication.
 
-`cb` if provided will be called with `cb(error)`
+`cmd` is the string to execute on the instances.
+
+
+`cb` if provided will be called with `cb(error)`.
