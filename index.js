@@ -5,6 +5,8 @@ var fs = require('fs')
 var _ = require('lodash')
 var util = require('util')
 var events = require('events')
+var exec = require('ssh-exec')
+var ssh = require('ssh2')
 var client = require('./lib/client.js')
 var noop = function () {}
 
@@ -201,7 +203,7 @@ Cluster.prototype.list = function(tag, cb) {
 
   var self = this
 
-  if (tag && _.indexOf(self.tags, tag) < 0) return cb(new Error('No instances found for ' + tag))
+  if (tag && _.indexOf(self.tags, tag) < 0) return cb(new Error('Invalid tag ' + tag))
   var target = tag ? [self.cluster + '-' + tag] : self.groupnames
 
   var filt = {Filters: [
@@ -234,7 +236,6 @@ Cluster.prototype.summarize = function(tag, cb) {
   if (!cb) cb = noop
 
   var self = this
-  self.emit('progress', 'Retrieving cluster info')
 
   this.list(tag, function(err, data) {
     if (err) return cb(err)
@@ -245,34 +246,48 @@ Cluster.prototype.summarize = function(tag, cb) {
 
 }
 
-// login to an instance associated with a tag
+// retrieve one or more instances given a tag and index
+
+Cluster.prototype.find = function(tag, ind, cb) {
+
+  var self = this
+
+  this.list(tag, function(err, instances) {
+    if (err) return cb(err)
+    if (instances.length === 0) return cb(new Error('No instances found'))
+    var found = ind != null ? instances.slice(ind, ind+1) : instances
+    if (found.length === 0) return cb(new Error('No instances found for index ' + ind))
+    cb(null, found)
+  })
+
+}
+
+// login to an instance associated with a tag and index
 
 Cluster.prototype.login = function(tag, ind, keyfile, cb) {
   if (!cb) cb = noop
 
   var self = this
-  var tag = tag || self.tags[0]
   var ind = ind || 0
+  var tag = tag || self.tags[0]
   if (!keyfile) return cb(new Error('No identity keyfile provided'))
   self.emit('progress', 'Logging into cluster')
 
-  this.list(tag, function(err, instances) {
+  this.find(tag, ind, function(err, instances) {
 
     if (err) return cb(err)
-    if (instances.length === 0) return cb(new Error('No instances found'))
-    if (!instances[ind]) return cb(new Error('Cannot find instance'))
-    var target = instances[ind]
+    if (instances.length > 1) return cb(new Error('Cannot login to multiple instances'))
+    var instance = instances[0]
+
     var opts = {
-      host: target.publicdns,
+      host: instance.publicdns,
       username: 'ubuntu',
       privateKey: fs.readFileSync(keyfile)
     }
 
-    self.emit('progress', 'Opening connection to ' + target.id + ' (' + tag + ')')
+    self.emit('progress', 'Opening connection to ' + instance.id)
 
-    var Client = require('ssh2').Client
-
-    var conn = new Client();
+    var conn = new ssh.Client();
     conn.on('error', function(err) {
       return cb(err)
     })
@@ -292,6 +307,46 @@ Cluster.prototype.login = function(tag, ind, keyfile, cb) {
     }).connect(opts, function(err) {
       if (err) return cb(err)
     });
+
+  })
+
+}
+
+// execute commands on a cluster
+
+Cluster.prototype.execute = function(tag, ind, keyfile, cmd, cb) {
+
+  var self = this
+  if (!keyfile) return cb(new Error('No identity keyfile provided'))
+  if (!cmd) return cb(new Error('No command provided for execution'))
+  self.emit('progress', 'Sending command to instances')
+
+  this.find(tag, ind, function(err, instances) {
+
+    if (err) return cb(err)
+    async.each(instances, 
+
+      function (instance, next) {
+        var opts = {
+          user: 'ubuntu',
+          host: instance.publicdns,
+          key: fs.readFileSync(keyfile)
+        }
+        var stream = exec(cmd, opts)
+        stream.on('error', function(err) {
+          next(err)
+        })
+        next()
+      }, 
+
+      function (err) {
+        if (err) {
+          return cb(err)
+        }
+        self.emit('success', 'Remote commands executed on '  + instances.length + ' instances')
+        cb(null, self.groupnames)
+      }
+    )
 
   })
 
