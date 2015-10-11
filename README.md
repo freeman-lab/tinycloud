@@ -135,44 +135,44 @@ each corresponds to one or more tagged collections of instances
 
 Launch a cluster. 
 
-If provided, `cb` will be called with `cb(error, data)`. If succesful, `data` will be a list of instance reservations (one per requested group). 
+`cb` if provided will be called with `cb(error, data)`. If succesful, `data` will be a list of instance reservations (one per requested group). 
 
 #### `cloud.destroy([cb])`
 
 Terminate a cluster. 
 
-If provided, `cb` will be called with `cb(error, data)`. If successful, `data` will be a list of terminated instances.
+`cb` if provided will be called with `cb(error, data)`. If successful, `data` will be a list of terminated instances.
 
 #### `cloud.list([tag], cb)`
 
 List instances associated with a cluster. 
 
-If provided, `tag` will restrict the list to only those instances belonging to the group with that tag, e.g. `master` or `worker`. 
+`tag` restricts the list to only those instances belonging to the group with that tag, e.g. `master` or `worker`. Default is to list all instances.
 
-`cb` will be called with `cb(error, data)`. If successful, `data` will be a list of instances.
+`cb` if provided will be called with `cb(error, data)`. If successful, `data` will be a list of instances.
 
 #### `cloud.login([tag], [ind], keyfile, cmd, [cb])`
 
 Login to a single instance associated with a cluster. 
 
-If provided, `tag` will specify instances belonging to the specified group. If not provided, will use the first group. 
+`tag` specifies instances belonging to the specified group. If not provided, will use the first group. 
 
-If provided, `ind` will specify the `ind`th instance belonging to the specified group. If not provided, will use the first instance.
+`ind` specifies `ind`th instance belonging to the specified group. If not provided, will use the first instance.
 
-Must provide a `keyfile` for authentication.
+`keyfile` required for authentication.
 
-`cb` will be called with `cb(error)`.
+`cb` if provided will be called with `cb(error)`.
 
 #### `cloud.execute([tag], [ind], keyfile, [cb])`
 
 Execute a command on one or more instances assocaited with a cluster.
 
-If provided, `tag` will specify instances belonging to the specified group. If not provided, will use all groups.
+`tag` specifies instances belonging to the specified group. If not provided, will use all groups.
 
-If provided, `ind` will specify the `ind`th instance belonging to the specified group. If not provided, will use all instances.
+`ind` specifies the `ind`th instance belonging to the specified group. If not provided, will use all instances.
 
-Must provide a `cmd` with the string to execute on the instances.
+`cmd` is the string to execute on the instances.
 
-Must provide a `keyfile` for authentication.
+`keyfile` required for authentication.
 
-`cb` will be called with `cb(error)`.
+`cb` if provided will be called with `cb(error)`
