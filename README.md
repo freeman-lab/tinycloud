@@ -109,7 +109,7 @@ cloud.launch( function(err, data) {
 
 #### `cloud = tinycloud(options, groups)`
 
-Create a new cloud
+Create a new `cloud`
 
 **options**
 
@@ -133,8 +133,46 @@ each corresponds to one or more tagged collections of instances
 
 #### `cloud.launch([cb])`
 
+Launch a cluster. 
+
+If provided, `cb` will be called with `cb(error, data)`. If succesful, `data` will be a list of instance reservations (one per requested group). 
+
 #### `cloud.destroy([cb])`
 
-#### `cloud.list(tag, cb)`
+Terminate a cluster. 
 
-#### `cloud.login(tag, ind, keyfile, [cb])`
+If provided, `cb` will be called with `cb(error, data)`. If successful, `data` will be a list of terminated instances.
+
+#### `cloud.list([tag], cb)`
+
+List instances associated with a cluster. 
+
+If provided, `tag` will restrict the list to only those instances belonging to the group with that tag, e.g. `master` or `worker`. 
+
+`cb` will be called with `cb(error, data)`. If successful, `data` will be a list of instances.
+
+#### `cloud.login([tag], [ind], keyfile, cmd, [cb])`
+
+Login to a single instance associated with a cluster. 
+
+If provided, `tag` will specify instances belonging to the specified group. If not provided, will use the first group. 
+
+If provided, `ind` will specify the `ind`th instance belonging to the specified group. If not provided, will use the first instance.
+
+Must provide a `keyfile` for authentication.
+
+`cb` will be called with `cb(error)`.
+
+#### `cloud.execute([tag], [ind], keyfile, [cb])`
+
+Execute a command on one or more instances assocaited with a cluster.
+
+If provided, `tag` will specify instances belonging to the specified group. If not provided, will use all groups.
+
+If provided, `ind` will specify the `ind`th instance belonging to the specified group. If not provided, will use all instances.
+
+Must provide a `cmd` with the string to execute on the instances.
+
+Must provide a `keyfile` for authentication.
+
+`cb` will be called with `cb(error)`.
