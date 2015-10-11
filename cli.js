@@ -3,7 +3,11 @@
 var clicloud = require('clicloud')
 var tinycloud = require('./index.js')
 
-var cli = new clicloud()
+var opts = {
+  name: 'tinycloud'
+}
+
+var cli = new clicloud(opts)
 
 var args = cli.parse(process.argv)
 
