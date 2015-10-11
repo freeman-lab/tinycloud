@@ -1,12 +1,14 @@
 var async = require('async')
 var aws = require('aws-sdk')
-var child = require('child_process');
-var fs = require('fs')
 var _ = require('lodash')
-var util = require('util')
-var events = require('events')
 var exec = require('ssh-exec')
 var ssh = require('ssh2')
+
+var child = require('child_process');
+var fs = require('fs')
+var util = require('util')
+var events = require('events')
+
 var client = require('./lib/client.js')
 var noop = function () {}
 
