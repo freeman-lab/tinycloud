@@ -3,12 +3,10 @@ var aws = require('aws-sdk')
 var _ = require('lodash')
 var exec = require('ssh-exec')
 var ssh = require('ssh2')
-
 var child = require('child_process');
 var fs = require('fs')
 var util = require('util')
 var events = require('events')
-
 var client = require('./lib/client.js')
 var noop = function () {}
 
@@ -68,7 +66,7 @@ Cluster.prototype.launch = function(cb) {
 Cluster.prototype.create = function(cb) {
 
 	var self = this
-  self.emit('progress', 'Creating cluster instances')
+  self.emit('status', 'Creating cluster instances')
 
   var tasks = _.map(self.specs, function(spec) {
 
@@ -115,7 +113,7 @@ Cluster.prototype.create = function(cb) {
 Cluster.prototype.configure = function(cb) {
 
   var self = this
-  self.emit('progress', 'Creating security groups')
+  self.emit('status', 'Creating security groups')
 
   async.each(self.groupnames, 
 
@@ -146,7 +144,7 @@ Cluster.prototype.configure = function(cb) {
 Cluster.prototype.authorize = function(cb) {
 
   var self = this
-  self.emit('progress', 'Setting authorization on security groups')
+  self.emit('status', 'Setting authorization on security groups')
 
   async.each(self.groupnames, 
 
@@ -183,7 +181,7 @@ Cluster.prototype.destroy = function(cb) {
   if (!cb) cb = noop
 
   var self = this
-  self.emit('progress', 'Shutting down cluster')
+  self.emit('status', 'Shutting down cluster')
   this.list(null, function(err, instances) {
 
     if (err) return cb(err)
@@ -238,11 +236,12 @@ Cluster.prototype.summarize = function(tag, cb) {
   if (!cb) cb = noop
 
   var self = this
+  self.emit('status', 'Retrieving cluster info')
 
   this.list(tag, function(err, data) {
     if (err) return cb(err)
     if (data.length == 0) return cb(new Error('No instances found'))
-    self.emit('progress', 'Found ' + data.length + ' instances')
+    self.emit('success', 'Found ' + data.length + ' instances')
     cb(null, data)
   })
 
@@ -273,7 +272,7 @@ Cluster.prototype.login = function(tag, ind, keyfile, cb) {
   var ind = ind || 0
   var tag = tag || self.tags[0]
   if (!keyfile) return cb(new Error('No identity keyfile provided'))
-  self.emit('progress', 'Logging into cluster')
+  self.emit('status', 'Logging into cluster')
 
   this.find(tag, ind, function(err, instances) {
 
@@ -287,7 +286,7 @@ Cluster.prototype.login = function(tag, ind, keyfile, cb) {
       privateKey: fs.readFileSync(keyfile)
     }
 
-    self.emit('progress', 'Opening connection to ' + instance.id)
+    self.emit('status', 'Opening connection to ' + instance.id)
 
     var conn = new ssh.Client();
     conn.on('error', function(err) {
@@ -321,31 +320,41 @@ Cluster.prototype.execute = function(tag, ind, keyfile, cmd, cb) {
   var self = this
   if (!keyfile) return cb(new Error('No identity keyfile provided'))
   if (!cmd) return cb(new Error('No command provided for execution'))
-  self.emit('progress', 'Sending command to instances')
+  self.emit('status', 'Sending command to instances')
 
   this.find(tag, ind, function(err, instances) {
 
     if (err) return cb(err)
-    async.each(instances, 
+    self.emit('start')
+    var msgs = _.fill(Array(instances.length), '')
+    var conns = []
+    async.forEachOf(instances, 
 
-      function (instance, next) {
+      function (instance, index, next) {
         var opts = {
           user: 'ubuntu',
           host: instance.publicdns,
           key: fs.readFileSync(keyfile)
         }
-        var stream = exec(cmd, opts)
-        stream.on('error', function(err) {
+        var conn = exec(cmd, opts)
+        conns.push(conn)
+        conn.on('error', function(err) {
           next(err)
         })
-        next()
+        conn.on('warn', function(err) {
+          msgs[index] += err
+        })
+        conn.on('exit', function(code) {
+          if (code) return next(new Error('Failure executing remote command\n\n' + msgs[index]))
+          next()
+        })
       }, 
 
       function (err) {
-        if (err) {
-          return cb(err)
-        }
-        self.emit('success', 'Remote commands executed on '  + instances.length + ' instances')
+        conns.forEach( function(conn) {conn.destroy()})
+        self.emit('stop')
+        if (err) return cb(err)
+        self.emit('success', 'Commands executed on ' + instances.length + ' instances')
         cb(null, self.groupnames)
       }
     )
@@ -359,7 +368,7 @@ Cluster.prototype.execute = function(tag, ind, keyfile, cmd, cb) {
 Cluster.prototype.check = function(cb) {
 
   var self = this
-  self.emit('progress', 'Checking for existing instances')
+  self.emit('status', 'Checking for existing instances')
 
   this.list(null, function (err, data) {
     var n = data.length
@@ -368,7 +377,7 @@ Cluster.prototype.check = function(cb) {
       return cb(new Error('Instances already exist'))
     }
     self.emit('success', 'No existing instances found')
-    cb(null)
+    cb()
   })
 
 }
