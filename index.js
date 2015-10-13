@@ -349,7 +349,8 @@ Cluster.prototype.execute = function(tag, ind, keyfile, cmd, cb) {
           msgs[index] += err
         })
         conn.on('exit', function(code) {
-          if (code) return next(new Error('Failure executing remote command\n\n' + msgs[index]))
+          var append = msgs[index] === '' ? '' : '\n\n' + msgs[index] 
+          if (code) return next(new Error('Failure executing remote command' + append))
           next()
         })
       }, 
