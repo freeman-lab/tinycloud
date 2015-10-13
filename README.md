@@ -4,9 +4,9 @@ Minimal module for launching compute clusters with `node.js`. Lets you spin up a
 
 There are already a couple great modules for cloud deployments, like [`kirby`](https://github.com/mafintosh/kirby) and [`pkgcloud`](https://github.com/pkgcloud/pkgcloud), but they are either very specific (targeting single nodes) or very broad (supporting compute, storage, etc.). `tinycloud` is just enough to make and play with a cluster!
 
-NOTE: This module launches clusters, which can cost real money. It is also still under development. Carefully monitor your AWS usage!
+*Note*: This module launches clusters, which can cost real money. It is also still under development. Carefully monitor your usage!
 
-BONUS: `tinycloud` is a [cat](http://warriors.wikia.com/wiki/Tinycloud) from the Warriors series
+[mascot](http://warriors.wikia.com/wiki/Tinycloud)
 
 ## install
 
@@ -174,6 +174,5 @@ Execute a command on one or more instances assocaited with a cluster.
 `keyfile` required for authentication.
 
 `cmd` is the string to execute on the instances.
-
 
 `cb` if provided will be called with `cb(error)`.
