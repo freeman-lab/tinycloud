@@ -6,6 +6,7 @@ var options = {
   type: 'm3.medium',
   cluster: 'voltron',
   ports: [22, 80],
+  size: 8,
   key: 'mykey'
 }
 

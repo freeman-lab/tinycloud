@@ -31,6 +31,10 @@ function Cluster(options, groups) {
       KeyName: options.key,
       MinCount: group.count,
       MaxCount: group.count,
+      BlockDeviceMappings: [{
+        DeviceName: '/dev/sda1',
+        Ebs: {DeleteOnTermination: true, VolumeSize: options.size}
+      }],
       SecurityGroupIds: [options.cluster + '-' + group.tag]
     }
   })
