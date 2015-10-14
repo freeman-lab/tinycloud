@@ -17,7 +17,7 @@ var groups = [
 
 var cloud = new tinycloud(options, groups)
 
-cloud.launch( function(err, data) {
+cloud.launch(function (err, data) {
   if (err) console.log(err)
   if (data) console.log(data)
 })
