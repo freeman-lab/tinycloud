@@ -81,25 +81,26 @@ tinycloud --help
 Example launching a cluster with 1 master and 1 worker
 
 ``` js
-var tinycloud = require('tiny-cloud')
+var Tinycloud = require('tinycloud')
+var AWS = require('tinycloud-aws')
 
-var options = {
+var awsMedium = new AWS({
   dry: false, // do a dry run
   image: 'ami-d05e75b8', // amazon image
   type: 'm3.medium', // machine instance type
   cluster: 'voltron', // name of cluster
   ports: [22, 80], // ports to open
-  key: 'mykey' // name of
-}
+  key: 'mykey' // aws keypair keyname
+})
 
 var groups = [
-  {tag: 'master', count: 1},
-  {tag: 'worker', count: 1}
+  {tag: 'primary', count: 1, driver: awsMedium},
+  {tag: 'worker', count: 1, driver: awsMedium}
 ]
 
-var cloud = new tinycloud(options, groups)
+var cloud = new Tinycloud(groups)
 
-cloud.launch( function(err, data) {
+cloud.launch(function (err, data) {
   if (err) console.log(err)
   if (data) console.log(data)
 })
@@ -107,29 +108,19 @@ cloud.launch( function(err, data) {
 
 ## API
 
-#### `cloud = tinycloud(options, groups)`
+#### `cloud = tinycloud(groups)`
 
-Create a new `cloud`
+Create a new `cloud` controller instance based on your cluster group configuration.
 
-**options**
+`groups` should be an array of objects, one for each group type you want to define.
 
-- `dry` do a dry run
-- `image` amazon image
-- `type` machine instance type
-- `cluster` name of cluster
-- `ports` ports to open
-- `key` name of key file
+for example: `cloud = tinycloud([groupA, groupB, groupC])`
 
-**groups**
+Each group should have these keys:
 
-each corresponds to one or more tagged collections of instances
-```
-[
-  {tag: 'master', count: 1},
-  {tag: 'scheduler', count: 1},
-  {tag: 'worker', count: 10}
-]
-```
+- **tag** - name of the group
+- **count** - how many instances of this group should be launched
+- **driver** - a tinycloud driver to use for instances in this group
 
 #### `cloud.launch([cb])`
 
@@ -139,17 +130,19 @@ Launch a cluster.
 
 #### `cloud.destroy([cb])`
 
-Terminate a cluster. 
+Terminate a cluster. All instances will be shut down and terminated (what 'terminated' actually means depends on your cloud provider).
 
-`cb` if provided will be called with `cb(error, data)`. If successful, `data` will be a list of terminated instances.
+`cb` if provided will be called with `cb(error, results)`. `results` will be an array with the status of each instance (whether it passed or failed)
+
+TODO document `results` exactly
 
 #### `cloud.list([tag], cb)`
 
 List instances associated with a cluster. 
 
-`tag` restricts the list to only those instances belonging to the group with that tag, e.g. `master` or `worker`. Default is to list all instances.
+`tag` is optional and restricts the list to only those instances belonging to the group with that tag, e.g. `master` or `worker`. Default is to list all instances.
 
-`cb` if provided will be called with `cb(error, data)`. If successful, `data` will be a list of instances.
+`cb` if provided will be called with `cb(error, data)`. If successful, `data` will be an array of instances.
 
 #### `cloud.login([tag], [ind], keyfile, [cb])`
 
@@ -165,7 +158,7 @@ Login to a single instance associated with a cluster.
 
 #### `cloud.execute([tag], [ind], keyfile, cmd, [cb])`
 
-Execute a command on one or more instances assocaited with a cluster.
+Execute a command on one or more instances associated with a cluster.
 
 `tag` specifies instances belonging to the specified group. If not provided, will use all groups.
 
