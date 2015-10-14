@@ -7,7 +7,7 @@
     "tinycloud": "cli.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "standard"
   },
   "repository": {
     "type": "git",
@@ -33,5 +33,8 @@
     "clicloud": "^1.1.2",
     "ssh-exec": "^1.3.0",
     "ssh2": "^0.4.11"
+  },
+  "devDependencies": {
+    "standard": "^5.3.1"
   }
 }

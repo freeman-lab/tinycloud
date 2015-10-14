@@ -1,5 +1,4 @@
 var async = require('async')
-var aws = require('aws-sdk')
 var _ = require('lodash')
 var exec = require('ssh-exec')
 var ssh = require('ssh2')
