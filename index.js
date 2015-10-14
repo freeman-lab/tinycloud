@@ -1,26 +1,25 @@
+var fs = require('fs')
+var util = require('util')
+var events = require('events')
 var async = require('async')
 var _ = require('lodash')
 var exec = require('ssh-exec')
 var ssh = require('ssh2')
-var child = require('child_process')
-var fs = require('fs')
-var util = require('util')
-var events = require('events')
 var client = require('./lib/client.js')
 var noop = function () {}
 
 util.inherits(Cluster, events.EventEmitter)
 
 function Cluster (options, groups) {
-  var options = options || {}
+  options = options || {}
   var self = this
   events.EventEmitter.call(self)
 
   this.count = options.count
   this.cluster = options.cluster
   this.ports = options.ports
-  this.tags = _.map(groups, function (g) {return g.tag})
-  this.groupnames = _.map(groups, function (g) {return options.cluster + '-' + g.tag})
+  this.tags = _.map(groups, function (g) { return g.tag })
+  this.groupnames = _.map(groups, function (g) { return options.cluster + '-' + g.tag })
 
   var specs = _.map(groups, function (group) {
     return {
@@ -48,7 +47,6 @@ function Cluster (options, groups) {
 
 Cluster.prototype.launch = function (cb) {
   if (!cb) cb = noop
-
   var self = this
 
   async.series([
@@ -61,7 +59,6 @@ Cluster.prototype.launch = function (cb) {
     self.emit('ready')
     cb(null, data[data.length - 1])
   })
-
 }
 
 // create cluster instances
@@ -73,17 +70,15 @@ Cluster.prototype.create = function (cb) {
   var tasks = _.map(self.specs, function (spec) {
     return function (next) {
       async.waterfall([
-
         function (flow) {
           self.client.runInstances(spec, function (err, reserved) {
             if (err) return flow(err)
             flow(null, reserved)
           })
         },
-
         function (reserved, flow) {
           var params = {
-            Resources: _.map(reserved.Instances, function (i) {return i.InstanceId}),
+            Resources: _.map(reserved.Instances, function (i) { return i.InstanceId }),
             Tags: [{Key: 'Name', Value: reserved.Instances[0].SecurityGroups[0].GroupName}]
           }
           self.client.createTags(params, function (err, data) {
@@ -91,13 +86,11 @@ Cluster.prototype.create = function (cb) {
             flow(null, reserved)
           })
         }
-
       ], function (err, reserved) {
         if (err) return next(err)
         next(null, reserved)
       })
     }
-
   })
 
   async.parallel(tasks, function (err, data) {
@@ -105,7 +98,6 @@ Cluster.prototype.create = function (cb) {
     self.emit('success', 'Instances created')
     cb(null, data)
   })
-
 }
 
 // configure security groups
@@ -115,7 +107,6 @@ Cluster.prototype.configure = function (cb) {
   self.emit('status', 'Creating security groups')
 
   async.each(self.groupnames,
-
     function (group, next) {
       var params = {
         Description: group,
@@ -126,7 +117,6 @@ Cluster.prototype.configure = function (cb) {
         next(err)
       })
     },
-
     function (err) {
       if (err) {
         return cb(err)
@@ -135,7 +125,6 @@ Cluster.prototype.configure = function (cb) {
       cb(null, self.groupnames)
     }
   )
-
 }
 
 // authorize security groups
@@ -145,7 +134,6 @@ Cluster.prototype.authorize = function (cb) {
   self.emit('status', 'Setting authorization on security groups')
 
   async.each(self.groupnames,
-
     function (group, next) {
       var params = {
         GroupName: group,
@@ -163,14 +151,12 @@ Cluster.prototype.authorize = function (cb) {
         next(err)
       })
     },
-
     function (err) {
       if (err) return cb(err)
       self.emit('success', 'Authorization set')
       cb(null, self.groupnames)
     }
   )
-
 }
 
 // destroy cluster
@@ -184,14 +170,13 @@ Cluster.prototype.destroy = function (cb) {
     if (err) return cb(err)
     if (instances.length === 0) return cb(new Error('no instances to destroy'))
 
-    var ids = _.map(instances, function (instance) { return instance.id})
+    var ids = _.map(instances, function (instance) { return instance.id })
     self.client.terminateInstances({InstanceIds: ids}, function (err, data) {
       if (err) return cb(err)
       self.emit('success', 'Terminated ' + ids.length + ' instances')
       cb(null, instances)
     })
   })
-
 }
 
 // list instances associated with tags
@@ -203,8 +188,8 @@ Cluster.prototype.list = function (tag, cb) {
   var target = tag ? [self.cluster + '-' + tag] : self.groupnames
 
   var filt = {Filters: [
-      {Name: 'group-name', Values: target},
-      {Name: 'instance-state-name', Values: ['running', 'pending']}]
+    {Name: 'group-name', Values: target},
+    {Name: 'instance-state-name', Values: ['running', 'pending']}]
   }
 
   this.client.describeInstances(filt, function (err, data) {
@@ -223,7 +208,6 @@ Cluster.prototype.list = function (tag, cb) {
     }))
     cb(null, instances)
   })
-
 }
 
 // summarize a cluster (error if no instances found)
@@ -236,18 +220,15 @@ Cluster.prototype.summarize = function (tag, cb) {
 
   this.list(tag, function (err, data) {
     if (err) return cb(err)
-    if (data.length == 0) return cb(new Error('No instances found'))
+    if (data.length === 0) return cb(new Error('No instances found'))
     self.emit('success', 'Found ' + data.length + ' instances')
     cb(null, data)
   })
-
 }
 
 // retrieve one or more instances given a tag and index
 
 Cluster.prototype.find = function (tag, ind, cb) {
-  var self = this
-
   this.list(tag, function (err, instances) {
     if (err) return cb(err)
     if (instances.length === 0) return cb(new Error('No instances found'))
@@ -255,7 +236,6 @@ Cluster.prototype.find = function (tag, ind, cb) {
     if (found.length === 0) return cb(new Error('No instances found for index ' + ind))
     cb(null, found)
   })
-
 }
 
 // login to an instance associated with a tag and index
@@ -264,8 +244,8 @@ Cluster.prototype.login = function (tag, ind, keyfile, cb) {
   if (!cb) cb = noop
 
   var self = this
-  var ind = ind || 0
-  var tag = tag || self.tags[0]
+  tag = tag || self.tags[0]
+  ind = ind || 0
   if (!keyfile) return cb(new Error('No identity keyfile provided'))
   self.emit('status', 'Logging into cluster')
 
@@ -283,9 +263,11 @@ Cluster.prototype.login = function (tag, ind, keyfile, cb) {
     self.emit('status', 'Opening connection to ' + instance.id)
 
     var conn = new ssh.Client()
+
     conn.on('error', function (err) {
       return cb(err)
     })
+
     conn.on('ready', function () {
       conn.shell(function (err, stream) {
         if (err) return cb(err)
@@ -302,9 +284,7 @@ Cluster.prototype.login = function (tag, ind, keyfile, cb) {
     }).connect(opts, function (err) {
       if (err) return cb(err)
     })
-
   })
-
 }
 
 // execute commands on a cluster
@@ -344,16 +324,14 @@ Cluster.prototype.execute = function (tag, ind, keyfile, cmd, cb) {
       },
 
       function (err) {
-        conns.forEach(function (conn) {conn.destroy()})
+        conns.forEach(function (conn) { conn.destroy() })
         self.emit('stop')
         if (err) return cb(err)
         self.emit('success', 'Commands executed on ' + instances.length + ' instances')
         cb(null, self.groupnames)
       }
     )
-
   })
-
 }
 
 // check if instances for a cluster already exist
@@ -371,7 +349,6 @@ Cluster.prototype.check = function (cb) {
     self.emit('success', 'No existing instances found')
     cb()
   })
-
 }
 
 module.exports = Cluster

@@ -1,4 +1,4 @@
-var tinycloud = require('./index.js')
+var Tinycloud = require('./index.js')
 
 var options = {
   dry: false,
@@ -15,7 +15,7 @@ var groups = [
   {tag: 'worker', count: 1}
 ]
 
-var cloud = new tinycloud(options, groups)
+var cloud = new Tinycloud(options, groups)
 
 cloud.launch(function (err, data) {
   if (err) console.log(err)

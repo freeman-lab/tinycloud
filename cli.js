@@ -1,13 +1,13 @@
 #! /usr/bin/env node
 
-var clicloud = require('clicloud')
-var tinycloud = require('./index.js')
+var Clicloud = require('clicloud')
+var Tinycloud = require('./index.js')
 
 var opts = {
   name: 'tinycloud'
 }
 
-var cli = new clicloud(opts)
+var cli = new Clicloud(opts)
 
 var args = cli.parse(process.argv)
 
@@ -16,6 +16,6 @@ var groups = [
   {tag: 'worker', count: args.count}
 ]
 
-var cloud = new tinycloud(args, groups)
+var cloud = new Tinycloud(args, groups)
 
 cli.init(args, cloud)
