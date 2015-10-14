@@ -87,7 +87,7 @@ Cluster.prototype.create = function(cb) {
 
         function (reserved, flow) {
           var params = {
-            Resources: _.map(reserved.Instances, function(i) {return i.InstanceId}), 
+            Resources: _.map(reserved.Instances, function(i) {return i.InstanceId}),
             Tags: [{Key: 'Name', Value: reserved.Instances[0].SecurityGroups[0].GroupName}]
           }
           self.client.createTags(params, function (err, data) {
@@ -107,7 +107,7 @@ Cluster.prototype.create = function(cb) {
   async.parallel(tasks, function(err, data) {
     if (err) return cb(err)
     self.emit('success', 'Instances created')
-    cb(null, data)  
+    cb(null, data)
   })
 
 }
@@ -119,18 +119,18 @@ Cluster.prototype.configure = function(cb) {
   var self = this
   self.emit('status', 'Creating security groups')
 
-  async.each(self.groupnames, 
+  async.each(self.groupnames,
 
     function (group, next) {
       var params = {
-        Description: group, 
+        Description: group,
         GroupName: group
       }
       self.client.createSecurityGroup(params, function (err, data) {
         if (!err || err.code === "InvalidGroup.Duplicate") return next()
         next(err)
       })
-    }, 
+    },
 
     function (err) {
       if (err) {
@@ -150,7 +150,7 @@ Cluster.prototype.authorize = function(cb) {
   var self = this
   self.emit('status', 'Setting authorization on security groups')
 
-  async.each(self.groupnames, 
+  async.each(self.groupnames,
 
     function (group, next) {
       var params = {
@@ -211,7 +211,7 @@ Cluster.prototype.list = function(tag, cb) {
   var target = tag ? [self.cluster + '-' + tag] : self.groupnames
 
   var filt = {Filters: [
-    {Name: 'group-name', Values: target}, 
+    {Name: 'group-name', Values: target},
     {Name: 'instance-state-name', Values: ['running', 'pending']}]
   }
 
@@ -221,9 +221,9 @@ Cluster.prototype.list = function(tag, cb) {
       return _.map(reservation.Instances, function(instance) {
         return {
           id: instance.InstanceId,
-          group: instance.SecurityGroups[0].GroupName, 
-          privateip: instance.PrivateIpAddress, 
-          publicip: instance.PublicIpAddress, 
+          group: instance.SecurityGroups[0].GroupName,
+          privateip: instance.PrivateIpAddress,
+          publicip: instance.PublicIpAddress,
           publicdns: instance.PublicDnsName,
           state: instance.State.Name
         }
@@ -332,7 +332,7 @@ Cluster.prototype.execute = function(tag, ind, keyfile, cmd, cb) {
     self.emit('start')
     var msgs = _.fill(Array(instances.length), '')
     var conns = []
-    async.forEachOf(instances, 
+    async.forEachOf(instances,
 
       function (instance, index, next) {
         var opts = {
@@ -349,11 +349,11 @@ Cluster.prototype.execute = function(tag, ind, keyfile, cmd, cb) {
           msgs[index] += err
         })
         conn.on('exit', function(code) {
-          var append = msgs[index] === '' ? '' : '\n\n' + msgs[index] 
+          var append = msgs[index] === '' ? '' : '\n\n' + msgs[index]
           if (code) return next(new Error('Failure executing remote command' + append))
           next()
         })
-      }, 
+      },
 
       function (err) {
         conns.forEach( function(conn) {conn.destroy()})
