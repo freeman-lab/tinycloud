@@ -1,6 +1,7 @@
 # tinycloud
 
 [![Build Status](https://travis-ci.org/freeman-lab/tinycloud.svg?branch=master)](https://travis-ci.org/freeman-lab/tinycloud)
+[![NPM](https://nodei.co/npm/tinycloud.png)](https://npmjs.org/package/tinycloud?compact=true)
 
 Minimal module for launching compute clusters with `node.js`. Lets you spin up a cluster on Amazon EC2, monitor its status, and login to its nodes. Use and extend as a module, or use as a CLI with the help of [`clicloud`](https://github.com/freeman-lab/clicloud).
 
