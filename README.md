@@ -184,7 +184,7 @@ There are two types of drivers:
 
 You can implement either type of driver depending on your use case.
 
-#### driver.prepare(function cb (err) {})
+#### driver.prepare(cb)
 
 This function will be run before `start`.
 
