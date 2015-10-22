@@ -91,7 +91,7 @@ var awsMedium = new AWS({
   dry: false, // do a dry run
   image: 'ami-d05e75b8', // amazon image
   type: 'm3.medium', // machine instance type
-  cluster: 'voltron', // name of cluster
+  name: 'voltron', // name of cluster
   ports: [22, 80], // ports to open
   key: 'mykey' // aws keypair keyname
 })
@@ -172,3 +172,72 @@ Execute a command on one or more instances associated with a cluster.
 `cmd` is the string to execute on the instances.
 
 `cb` if provided will be called with `cb(error)`.
+
+### Driver API
+
+All driver methods are **required**. Even if you don't use them you have to implement the methods and call the `cb`, e.g. `process.nextTick(cb)`
+
+There are two types of drivers:
+
+- Single node drivers control a single compute node
+- Group drivers control a group of nodes. Certain cloud providers have APIs for managing groups, so sometimes it makes sense to have a driver correspond to a group of nodes.
+
+You can implement either type of driver depending on your use case.
+
+#### driver.prepare(function cb (err) {})
+
+This function will be run before `start`.
+
+You can use it to do things like provision images/disk/networking on your compute provider so that then `start` is called it can quickly boot up the node.
+
+You probably want to make this method idempotent.
+
+Call `cb(null)` when you have successfully prepared your node(s).
+
+Call `cb(error)` with an Error object if something went wrong.
+
+#### driver.start(cb)
+
+This should start up the node(s). It should be idempotent, meaning if it is already started it should skip it without error. If a node isn't started it should start it. It's only considered a 'start error' if you try to start a node but receive an error response from the provider.
+
+Call `cb(null, list)` when you have successfully started your node(s), where `list` is the result of `driver.list()`.
+
+Call `cb(error)` with an Error object if something went wrong.
+
+#### driver.stop(cb)
+
+This should stop the node(s)
+
+Call `cb(null)` when you have successfully stopped your node(s).
+
+Call `cb(error)` with an Error object if something went wrong.
+
+#### driver.status()
+
+Get the
+
+Call `cb(null)` when you have successfully stopped your node(s).
+
+Call `cb(error)` with an Error object if something went wrong.
+
+#### driver.destroy(cb)
+
+This should destructively destroy the node(s)
+
+Call `cb(null)` when you have successfully destroyed your node(s).
+
+Call `cb(error)` with an Error object if something went wrong.
+
+#### driver.list(cb)
+
+Get a list of node(s) managed by this cluster.
+
+Call `cb(null, nodes)` with an array of nodes, or a single node object if you only have 1.
+
+Call `cb(error)` with an Error object if something went wrong.
+
+Node objects should have the following properties:
+
+- **address** - the IP address or hostname of the node for ssh
+- **username** - the username to use to ssh into the node
+- **port** - the port to use for ssh. if not supplied will default to 22
