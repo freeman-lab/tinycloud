@@ -212,7 +212,7 @@ Call `cb(null)` when you have successfully stopped your node(s).
 
 Call `cb(error)` with an Error object if something went wrong.
 
-#### driver.status()
+#### driver.status(cb)
 
 Get the status of the node(s)
 
