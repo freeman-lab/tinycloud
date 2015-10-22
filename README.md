@@ -214,11 +214,17 @@ Call `cb(error)` with an Error object if something went wrong.
 
 #### driver.status()
 
-Get the
+Get the status of the node(s)
 
-Call `cb(null)` when you have successfully stopped your node(s).
+Call `cb(null, nodes)` with an array of strings with node statuses, or a single string if you have 1.
 
 Call `cb(error)` with an Error object if something went wrong.
+
+Status should be one of the following:
+
+- **pending** 
+- **running** 
+- **terminated** 
 
 #### driver.destroy(cb)
 
